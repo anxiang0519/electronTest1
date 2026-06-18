@@ -1,0 +1,36 @@
+appId: com.yourcompany.pdfrenamer
+productName: PDFRenamer
+copyright: Copyright © 2026
+
+directories:
+  output: release/${version}
+  buildResources: build
+
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+
+# 关键：禁用原生模块重建
+buildDependenciesFromSource: false
+nodeGypRebuild: false
+npmRebuild: false
+
+# 排除不需要的模块
+asarUnpack:
+  - node_modules/adm-zip/**
+
+win:
+  target:
+    - target: nsis
+      arch: x64
+    - target: portable
+      arch: x64
+  icon: build/icon.ico
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: PDF Renamer
