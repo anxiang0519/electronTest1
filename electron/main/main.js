@@ -2,6 +2,8 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const pdf_table_extractor = require('pdf-table-extractor');
+
 // const url = require('url');  // 如果需要 url 模块
 let mainWindow;
 
@@ -34,33 +36,52 @@ app.on('window-all-closed', () => {
 
 // ========== IPC 处理文件操作 ==========
 
-
+// 将 pdf-table-extractor 包装为 Promise
+function extractTables(pdfPath) {
+  return new Promise((resolve, reject) => {
+    pdf_table_extractor(pdfPath, resolve, reject);
+  });
+}
 // 方式二：接收前端传来的文件路径，进行业务处理
 ipcMain.handle('file:processFiles', async (event, filePaths) => {
-  const results = [];
+const results = [];
   
   for (const filePath of filePaths) {
     try {
-      // 这里进行你的业务处理，比如：
-      // - 读取文件内容
-      // - 复制到指定目录
-      // - 上传到其他服务器
-      // - 解析文件数据
-      
-      const content = fs.readFileSync(filePath);
+      const ext = path.extname(filePath).toLowerCase();
+      const fileName = path.basename(filePath);
       const stats = fs.statSync(filePath);
       
-      // 示例：计算文件 MD5
-      const crypto = require('crypto');
-      const hash = crypto.createHash('md5').update(content).digest('hex');
+      // 只处理 PDF 文件
+      if (ext !== '.pdf') {
+        results.push({
+          path: filePath,
+          name: fileName,
+          size: stats.size,
+          status: 'skipped',
+          reason: '不是 PDF 文件'
+        });
+        continue;
+      }
+      
+      // 提取 PDF 表格数据
+      const tableData = await extractTables(filePath);
+      
+      // 整理表格数据
+      const pages = tableData.pageTables.map(page => ({
+        pageNumber: page.page,
+        tables: page.tables  // 二维数组
+      }));
       
       results.push({
         path: filePath,
-        name: path.basename(filePath),
+        name: fileName,
         size: stats.size,
-        md5: hash,
+        pageCount: tableData.numPages,
+        pages: pages,
         status: 'success'
       });
+      
     } catch (error) {
       results.push({
         path: filePath,

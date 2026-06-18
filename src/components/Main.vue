@@ -132,6 +132,7 @@ async function handleProcessFiles() {
     debugger
     const results = await window.electronAPI.processFiles(filePaths);
     debugger
+    console.log(9999,results);
     processResults.value = results;
   } catch (error) {
     alert('处理失败: ' + error.message);
