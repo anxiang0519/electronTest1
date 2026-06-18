@@ -18,7 +18,7 @@ export default defineConfig(({ command }) => {
       electron([
         {
           // 主进程
-          entry: 'electron/main.js',
+          entry: 'electron/main/main.js',
           onstart: (options) => options.startup(),
           vite: {
             build: {
@@ -29,7 +29,7 @@ export default defineConfig(({ command }) => {
         },
         {
           // 预加载脚本
-          entry: 'electron/preload.js',
+          entry: 'electron/preload/preload.js',
           onstart: (options) => options.reload(),
           vite: {
             build: {
