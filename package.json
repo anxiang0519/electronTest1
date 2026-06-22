@@ -16,9 +16,11 @@
   "dependencies": {
     "adm-zip": "^0.5.10",
     "archiver": "^8.0.0",
+    "electron-log": "^5.4.4",
+    "multer": "^2.2.0",
     "pdf-table-extractor": "^1.0.3",
-    "pdfjs-dist": "^4.0.379",
-    "vue": "^3.5.32"
+    "vue": "^3.5.32",
+    "web-print-pdf": "^2.1.7"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.7",

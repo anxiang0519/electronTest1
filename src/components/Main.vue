@@ -1,7 +1,7 @@
 <<template>
   <div class="file-uploader">
     <h2>文件上传</h2>
-    
+    <div>{{ selectedPrinter }}</div>
     <!-- 方式二：使用原生 input 选择（拖拽也可） -->
     <div class="section">
       <h3>方式二：拖拽/点击选择</h3>
@@ -51,9 +51,9 @@
         <button @click="handleProcessFiles" :disabled="processing">
           {{ processing ? '处理中...' : '处理文件' }}
         </button>
-        <button @click="handleCopyFiles" :disabled="processing">
+        <!-- <button @click="handleCopyFiles" :disabled="processing">
           复制到指定目录
-        </button>
+        </button> -->
         <button @click="clearAll">清空</button>
       </div>
     </div>
@@ -80,7 +80,17 @@ const selectedFiles = ref([]);
 const processResults = ref([]);
 const loading = ref(false);
 const processing = ref(false);
+const printers = ref([]);
+const selectedPrinter = ref('');
 
+const printerList = await window.electronAPI.printer.getPrinters();
+  printers.value = printerList;
+  
+  // 默认选中系统默认打印机
+  const defaultPrinter = printerList.find(p => p.isDefault);
+  if (defaultPrinter) {
+    selectedPrinter.value = defaultPrinter.name;
+  }
 
 // 方式二：通过 input 选择
 function handleFileChange(event) {
@@ -140,7 +150,11 @@ async function handleProcessFiles() {
   
   processing.value = false;
 }
-
+window.electronAPI.onPrintProgress((progress) => {
+  console.log(`打印进度: ${progress.current}/${progress.total} (${progress.percent}%)`);
+  // 更新你的 UI 进度条，例如：
+  // progressBar.value = progress.percent;
+});
 // 复制文件到指定目录
 async function handleCopyFiles() {
   if (selectedFiles.value.length === 0) return;

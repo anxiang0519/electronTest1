@@ -9,5 +9,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   copyFiles: (filePaths, targetDir) => ipcRenderer.invoke('file:copyFiles', { filePaths, targetDir }),
   
   // 监听进度（如果需要）
-  onProgress: (callback) => ipcRenderer.on('file:progress', callback)
+  onProgress: (callback) => ipcRenderer.on('file:progress', callback),
+  getPrinters: () => ipcRenderer.invoke('print:get-printers'),
+  onPrintProgress: (callback) => {
+    ipcRenderer.on('print-progress', (event, data) => callback(data));
+  }
 });

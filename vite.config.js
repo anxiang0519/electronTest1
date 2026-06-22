@@ -23,7 +23,10 @@ export default defineConfig(({ command }) => {
           vite: {
             build: {
               outDir: 'dist-electron/main',
-              minify: command === 'build'
+              minify: command === 'build',
+              rolldownOptions: {
+                external: ['electron-log', 'electron-log/main', 'electron-log/renderer', 'electron-log/preload']
+              }
             }
           }
         },
@@ -34,7 +37,10 @@ export default defineConfig(({ command }) => {
           vite: {
             build: {
               outDir: 'dist-electron/preload',
-              minify: command === 'build'
+              minify: command === 'build',
+              rolldownOptions: {
+                external: ['electron-log']
+              }
             }
           }
         }

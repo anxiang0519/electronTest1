@@ -1,12 +1,11 @@
-// ✅ 全部用 require，不要用 import
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
-const path = require('path');
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import log from 'electron-log/main';
+
+import path from 'path';
 const fs = require('fs');
-const pdf_table_extractor = require('pdf-table-extractor');
+const { printPdfByBase64, printHtmlByBase64 } = require('web-print-pdf');
 
-// const url = require('url');  // 如果需要 url 模块
 let mainWindow;
-
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1000,
@@ -14,17 +13,18 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, '../preload/preload.js')
     }
   });
   mainWindow.webContents.openDevTools();
+  log.initialize();
 
   // 加载 Vue 应用
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env.NODE_ENV === 'development' && false) {
     mainWindow.loadURL('http://localhost:8080');
-    mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(app.getAppPath(), 'dist/index.html'));
+    log(111,path.join(__dirname, '../../dist/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
 }
 
@@ -36,66 +36,79 @@ app.on('window-all-closed', () => {
 
 // ========== IPC 处理文件操作 ==========
 
-// 将 pdf-table-extractor 包装为 Promise
-function extractTables(pdfPath) {
-  return new Promise((resolve, reject) => {
-    pdf_table_extractor(pdfPath, resolve, reject);
-  });
-}
-// 方式二：接收前端传来的文件路径，进行业务处理
 ipcMain.handle('file:processFiles', async (event, filePaths) => {
-const results = [];
-  
-  for (const filePath of filePaths) {
+  const results = [];
+  const totalCount = filePaths.length;
+
+  for (let i = 0; i < totalCount; i++) {
+    const filePath = filePaths[i];
+    let base64Content;
+    
     try {
+      // 1. 异步获取文件信息，避免阻塞主进程
       const ext = path.extname(filePath).toLowerCase();
       const fileName = path.basename(filePath);
-      const stats = fs.statSync(filePath);
       
-      // 只处理 PDF 文件
-      if (ext !== '.pdf') {
+      // 2. 异步读取文件并转为 Base64
+      const fileBuffer = await fs.readFile(filePath);
+      base64Content = fileBuffer.toString('base64');
+      
+      let result;
+      // 3. 使用 ext 替代 req.file.mimetype 进行类型判断
+      if (ext === '.pdf') {
+        result = await printPdfByBase64(base64Content, {
+          paperFormat: 'A4'
+        }, {
+          silent: true,
+          printer: 'HP-LaserJet',
+          copies: 1
+        });
+      } else if (['.html', '.htm'].includes(ext)) {
+        result = await printHtmlByBase64(base64Content, {
+          paperFormat: 'A4'
+        }, {
+          silent: true
+        });
+      } else {
+        // 不支持的文件类型记录错误，但不中断整个批量任务
         results.push({
           path: filePath,
           name: fileName,
-          size: stats.size,
-          status: 'skipped',
-          reason: '不是 PDF 文件'
+          status: 'error',
+          error: `不支持的文件类型: ${ext}`
         });
-        continue;
+        continue; // 跳过当前文件，继续处理下一个
       }
-      
-      // 提取 PDF 表格数据
-      const tableData = await extractTables(filePath);
-      
-      // 整理表格数据
-      const pages = tableData.pageTables.map(page => ({
-        pageNumber: page.page,
-        tables: page.tables  // 二维数组
-      }));
-      
+
+      // 4. 收集成功的打印结果
       results.push({
         path: filePath,
         name: fileName,
-        size: stats.size,
-        pageCount: tableData.numPages,
-        pages: pages,
-        status: 'success'
+        status: 'success',
+        result: result
       });
-      
+
     } catch (error) {
+      // 5. 捕获异常，记录失败文件
       results.push({
         path: filePath,
         name: path.basename(filePath),
-        error: error.message,
-        status: 'error'
+        status: 'error',
+        error: error.message
+      });
+    } finally {
+      // 6. 实时向前端发送当前处理进度
+      event.sender.send('print-progress', {
+        current: i + 1,
+        total: totalCount,
+        percent: Math.floor(((i + 1) / totalCount) * 100)
       });
     }
   }
-  
+
   return results;
 });
 
-// 方式三：复制文件到指定目录
 ipcMain.handle('file:copyFiles', async (event, { filePaths, targetDir }) => {
   const results = [];
   
@@ -127,11 +140,16 @@ ipcMain.handle('file:copyFiles', async (event, { filePaths, targetDir }) => {
   return results;
 });
 
-// 工具函数：格式化文件大小
-function formatBytes(bytes) {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
+ipcMain.handle('print:get-printers', async () => {
+  try {
+    // 获取当前所有窗口中的第一个（或指定主窗口）
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) {
+      return await win.webContents.getPrintersAsync();
+    }
+    return [];
+  } catch (error) {
+    console.error('获取打印机列表失败:', error);
+    return [];
+  }
+});
