@@ -12,6 +12,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onProgress: (callback) => ipcRenderer.on('file:progress', callback),
   getPrinters: () => ipcRenderer.invoke('print:get-printers'),
   onPrintProgress: (callback) => {
-    ipcRenderer.on('print-progress', (event, data) => callback(data));
+    ipcRenderer.on('print-progress', callback);
   }
 });

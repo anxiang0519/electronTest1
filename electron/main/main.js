@@ -1,6 +1,4 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
-import log from 'electron-log/main';
-
 import path from 'path';
 const fs = require('fs');
 const { printPdfByBase64, printHtmlByBase64 } = require('web-print-pdf');
@@ -13,18 +11,18 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, '../preload/preload.js')
+      preload: path.join(app.getAppPath(), 'dist-electron/preload/preload.js')
     }
   });
   mainWindow.webContents.openDevTools();
-  log.initialize();
-
+  console.log(1111,path.join(app.getAppPath(), 'dist-electron/preload/preload.js'))
   // 加载 Vue 应用
-  if (process.env.NODE_ENV === 'development' && false) {
+  if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:8080');
   } else {
-    log(111,path.join(__dirname, '../../dist/index.html'));
-    mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
+    const filePath = path.join(app.getAppPath(), 'dist/index.html');
+    console.log(22222,path.join(app.getAppPath(), 'dist/index.html'))
+    mainWindow.loadFile(filePath);
   }
 }
 

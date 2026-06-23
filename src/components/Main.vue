@@ -1,7 +1,7 @@
 <<template>
   <div class="file-uploader">
     <h2>文件上传</h2>
-    <div>{{ selectedPrinter }}</div>
+    <div>打印机{{ selectedPrinter }}</div>
     <!-- 方式二：使用原生 input 选择（拖拽也可） -->
     <div class="section">
       <h3>方式二：拖拽/点击选择</h3>
@@ -83,15 +83,19 @@ const processing = ref(false);
 const printers = ref([]);
 const selectedPrinter = ref('');
 
-const printerList = await window.electronAPI.printer.getPrinters();
-  printers.value = printerList;
-  
-  // 默认选中系统默认打印机
-  const defaultPrinter = printerList.find(p => p.isDefault);
-  if (defaultPrinter) {
-    selectedPrinter.value = defaultPrinter.name;
+( async()=>{
+  try {
+    const printerList = await window.electronAPI.getPrinters();
+    printers.value = printerList;
+    const defaultPrinter = printerList.find(p => p.isDefault);
+    if (defaultPrinter) {
+      selectedPrinter.value = defaultPrinter.name;
+    }
+  } catch (error) {
+    console.error('获取打印机失败:', error);
   }
 
+})()
 // 方式二：通过 input 选择
 function handleFileChange(event) {
   const files = Array.from(event.target.files);

@@ -11,6 +11,7 @@ export default defineConfig(({ command }) => {
   rmSync('dist-electron', { recursive: true, force: true })
 
   return {
+    base: './',
     plugins: [
       vue(),
       vueJsx(),
